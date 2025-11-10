@@ -14,12 +14,12 @@ from telegram.ext import (
 import aiosqlite
 
 # === BOT TOKEN FROM ENVIRONMENT ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # <-- এই লাইনটা যোগ করুন
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
     raise ValueError("❌ BOT_TOKEN not found. Please set it in Render Environment Variables.")
 
-ADMIN_ID = 8238022212  # your Telegram user ID
+ADMIN_ID = 8238022212  # Your Telegram user ID
 
 logging.basicConfig(level=logging.INFO)
 DB_PATH = "database.db"
@@ -46,7 +46,6 @@ async def init_db():
         """)
         await db.commit()
 
-
 # === /START ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -58,7 +57,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
-
 
 # === GENDER SELECTION ===
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,7 +75,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await db.commit()
             await query.edit_message_text("✅ Gender saved!\nNow send your age (10–99):")
             context.user_data["awaiting_age"] = True
-
 
 # === HANDLE MESSAGES ===
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,7 +122,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("❌ You are not connected.\nUse /next to find a new partner.")
 
-
 # === ADMIN COMMANDS ===
 async def handle_admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -152,7 +148,6 @@ async def handle_admin_commands(update: Update, context: ContextTypes.DEFAULT_TY
                 textlog = "\n".join([f"{r[0]} → {r[1]}: {r[2]}" for r in rows])
                 await update.message.reply_text(f"🗂️ Last 10 Chats:\n{textlog}")
 
-
 # === MATCHING ===
 async def next_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -176,7 +171,6 @@ async def next_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("⏳ Waiting for a partner...")
 
-
 # === STOP ===
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -184,7 +178,6 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await db.execute("UPDATE users SET partner_id = NULL WHERE user_id = ?", (user_id,))
         await db.commit()
     await update.message.reply_text("❌ Chat ended. Type /next to start again.")
-
 
 # === MAIN ===
 async def main():
@@ -197,11 +190,8 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     app.add_handler(CallbackQueryHandler(button_handler))
 
+    logging.info("🤖 Bot is now running...")
     await app.run_polling()
-   
-   
-   logging.info("🤖 Bot is now running...")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
