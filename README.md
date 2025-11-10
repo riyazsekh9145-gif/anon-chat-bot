@@ -1,2 +1,0 @@
-# anon-chat-bot
-Nothing
