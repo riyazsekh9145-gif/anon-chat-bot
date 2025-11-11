@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 
 # 🔹 এখানে নিজের Bot Token বসান
-BOT_TOKEN = "7479192169:AAHXQbfhgFY3GHZFQbH87ZOo4gPxD7upi_o"
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # Chat pairs & ratings memory
