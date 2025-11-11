@@ -1,213 +1,107 @@
-import logging
-import asyncio
-import os
-import aiosqlite
-from datetime import datetime
-from telegram import (
-    Update, KeyboardButton, ReplyKeyboardMarkup, ChatAction
-)
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    ContextTypes, filters
-)
+import telebot
+from telebot import types
 
-# ---------- CONFIG ----------
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "7479192169:AAHXQbfhgFY3GHZFQbH87ZOo4gPxD7upi_o"
-ADMIN_ID = 8238022212
-DB_PATH = "chat_users.db"
+# 🔹 এখানে নিজের Bot Token বসান
+BOT_TOKEN = "7479192169:AAHXQbfhgFY3GHZFQbH87ZOo4gPxD7upi_o"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Chat pairs & ratings memory
+waiting_users = []
+active_chats = {}
+ratings = {}
+admins = [8238022212]  # এখানে নিজের Telegram user ID দিন (admin)
 
-# ---------- DB INIT ----------
-async def init_db():
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER UNIQUE,
-                partner_id INTEGER,
-                joined TIMESTAMP
-            )
-        """)
-        await db.commit()
-    logger.info("📁 Database initialized.")
+def make_main_buttons():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row('/start', '/next', '/stop')
+    markup.row('👍', '👎', '🚫 Complain')
+    markup.row('📎 Share account link')
+    return markup
 
-# ---------- /start ----------
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO users (user_id, partner_id, joined) VALUES (?, NULL, ?)",
-            (user.id, datetime.now())
-        )
-        await db.commit()
-
-    buttons = [
-        [KeyboardButton("/find"), KeyboardButton("/end")],
-        [KeyboardButton("/menu"), KeyboardButton("/profile")]
-    ]
-    keyboard = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
-    await update.message.reply_text(
-        "👋 *Welcome to Anon Chat Bot!*\n\n"
-        "Start chatting anonymously with strangers.\n"
-        "Use /find to start finding someone.",
-        parse_mode="Markdown",
-        reply_markup=keyboard
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.send_message(
+        message.chat.id,
+        "👋 Welcome to Anonymous Chat!\n\nPress /next to find a random partner.",
+        reply_markup=make_main_buttons()
     )
 
-# ---------- /find ----------
-async def find_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT partner_id FROM users WHERE user_id=?", (user_id,)) as cur:
-            row = await cur.fetchone()
-            if row and row[0]:
-                return await update.message.reply_text("⚠️ You’re already chatting. Use /end first.")
-
-        async with db.execute("SELECT user_id FROM users WHERE partner_id IS NULL AND user_id != ?", (user_id,)) as cur:
-            partner = await cur.fetchone()
-
-        if partner:
-            partner_id = partner[0]
-            await db.execute("UPDATE users SET partner_id=? WHERE user_id=?", (partner_id, user_id))
-            await db.execute("UPDATE users SET partner_id=? WHERE user_id=?", (user_id, partner_id))
-            await db.commit()
-            await context.bot.send_message(partner_id, "🎉 Partner found! Say hi 👋")
-            await update.message.reply_text("🎉 Partner found! Say hi 👋")
-        else:
-            await db.execute("UPDATE users SET partner_id=NULL WHERE user_id=?", (user_id,))
-            await db.commit()
-            await update.message.reply_text("🔍 Searching for a random partner... Please wait...")
-
-# ---------- /end ----------
-async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT partner_id FROM users WHERE user_id=?", (user_id,)) as cur:
-            row = await cur.fetchone()
-
-        if not row or not row[0]:
-            return await update.message.reply_text("❌ You are not chatting right now.")
-
-        partner_id = row[0]
-        await db.execute("UPDATE users SET partner_id=NULL WHERE user_id IN (?, ?)", (user_id, partner_id))
-        await db.commit()
-
-    try:
-        await context.bot.send_message(partner_id, "❌ Your partner ended the chat.")
-    except Exception:
-        pass
-    await update.message.reply_text("✅ Chat ended. Use /find to meet a new person.")
-
-# ---------- /menu ----------
-async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "⚙️ *Menu*\n\n"
-        "/find - Find a random partner\n"
-        "/end - End current chat\n"
-        "/profile - View your info\n"
-        "/rules - Terms of use\n"
-        "/next - Skip to next partner\n"
-        "/photo1 - Send 1-time photo\n"
-        "/photo - Send lifetime photo",
-        parse_mode="Markdown"
-    )
-
-# ---------- /profile ----------
-async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    await update.message.reply_text(
-        f"👤 *Profile*\nName: {user.first_name}\nID: `{user.id}`",
-        parse_mode="Markdown"
-    )
-
-# ---------- /rules ----------
-async def rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📜 *Rules*\n\n"
-        "1️⃣ Stay respectful.\n"
-        "2️⃣ No spam or abuse.\n"
-        "3️⃣ Stay anonymous.\n"
-        "4️⃣ Use /end to leave safely.",
-        parse_mode="Markdown"
-    )
-
-# ---------- RELAY TEXT ----------
-async def relay_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    text = update.message.text.strip()
-    if not text:
+@bot.message_handler(commands=['next'])
+def next_partner(message):
+    user_id = message.chat.id
+    if user_id in active_chats:
+        bot.send_message(user_id, "❌ You are already chatting. Use /stop first.")
         return
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT partner_id FROM users WHERE user_id=?", (user_id,)) as cur:
-            row = await cur.fetchone()
-    if not row or not row[0]:
-        return await update.message.reply_text("⚠️ You’re not chatting. Use /find first.")
-    partner_id = row[0]
-    await context.bot.send_chat_action(chat_id=partner_id, action=ChatAction.TYPING)
-    await asyncio.sleep(0.4)
-    try:
-        msg = f"*anonymous_bro:*\n{text}"
-        await context.bot.send_message(partner_id, msg, parse_mode="Markdown")
-    except Exception as e:
-        logger.error(f"Relay failed: {e}")
+    if waiting_users and waiting_users[0] != user_id:
+        partner_id = waiting_users.pop(0)
+        active_chats[user_id] = partner_id
+        active_chats[partner_id] = user_id
+        bot.send_message(user_id, "👫 Partner found! Say Hi 👋")
+        bot.send_message(partner_id, "👫 Partner found! Say Hi 👋")
+    else:
+        waiting_users.append(user_id)
+        bot.send_message(user_id, "🔍 Searching for a random partner...")
 
-# ---------- RELAY PHOTO ----------
-async def relay_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    photo = update.message.photo[-1].file_id
-    caption = update.message.caption or ""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT partner_id FROM users WHERE user_id=?", (user_id,)) as cur:
-            row = await cur.fetchone()
-    if not row or not row[0]:
-        return await update.message.reply_text("⚠️ You’re not chatting. Use /find first.")
-    partner_id = row[0]
-    await context.bot.send_photo(partner_id, photo, caption=f"📸 {caption}")
+@bot.message_handler(commands=['stop'])
+def stop_chat(message):
+    user_id = message.chat.id
+    if user_id in active_chats:
+        partner_id = active_chats.pop(user_id)
+        active_chats.pop(partner_id, None)
+        bot.send_message(user_id, "🛑 Chat ended.")
+        bot.send_message(partner_id, "🛑 Partner left the chat.")
+    elif user_id in waiting_users:
+        waiting_users.remove(user_id)
+        bot.send_message(user_id, "🛑 Searching stopped.")
+    else:
+        bot.send_message(user_id, "⚠️ You are not chatting.")
 
-# ---------- ADMIN ----------
-async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return await update.message.reply_text("🚫 Not authorized.")
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM users") as cur:
-            total = (await cur.fetchone())[0]
-        async with db.execute("SELECT COUNT(*) FROM users WHERE partner_id IS NOT NULL") as cur:
-            chatting = (await cur.fetchone())[0]
-    await update.message.reply_text(
-        f"📊 *Bot Stats*\n👥 Total Users: {total}\n💬 Active Chats: {chatting}",
-        parse_mode="Markdown"
-    )
+@bot.message_handler(func=lambda m: m.text == '👍')
+def like_partner(message):
+    user_id = message.chat.id
+    partner_id = active_chats.get(user_id)
+    if partner_id:
+        ratings[partner_id] = ratings.get(partner_id, 0) + 1
+        bot.send_message(user_id, "Thanks for rating 👍")
+    else:
+        bot.send_message(user_id, "You have no partner right now.")
 
-# ---------- MAIN ----------
-async def main():
-    await init_db()
-    if BOT_TOKEN == "PASTE_YOUR_BOT_TOKEN_HERE":
-        print("❌ Please paste your real BOT TOKEN in the code first!")
-        return
-    app = Application.builder().token(BOT_TOKEN).build()
+@bot.message_handler(func=lambda m: m.text == '👎')
+def dislike_partner(message):
+    user_id = message.chat.id
+    partner_id = active_chats.get(user_id)
+    if partner_id:
+        ratings[partner_id] = ratings.get(partner_id, 0) - 1
+        bot.send_message(user_id, "Feedback saved 👎")
+    else:
+        bot.send_message(user_id, "You have no partner right now.")
 
-    # Register handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("find", find_partner))
-    app.add_handler(CommandHandler("end", end_chat))
-    app.add_handler(CommandHandler("menu", menu))
-    app.add_handler(CommandHandler("profile", profile))
-    app.add_handler(CommandHandler("rules", rules))
-    app.add_handler(CommandHandler("stats", admin_stats))
-    app.add_handler(MessageHandler(filters.PHOTO, relay_photo))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, relay_message))
+@bot.message_handler(func=lambda m: m.text == '🚫 Complain')
+def complain(message):
+    user_id = message.chat.id
+    partner_id = active_chats.get(user_id)
+    if partner_id:
+        for admin_id in admins:
+            bot.send_message(admin_id, f"⚠️ Complaint received from {user_id} about {partner_id}")
+        bot.send_message(user_id, "Your complaint has been sent 🚫")
+    else:
+        bot.send_message(user_id, "You are not chatting currently.")
 
-    logger.info("🚀 Bot is running...")
-    await app.run_polling()
+@bot.message_handler(func=lambda m: m.text == '📎 Share account link')
+def share_link(message):
+    username = message.from_user.username
+    if username:
+        bot.send_message(message.chat.id, f"🔗 t.me/{username}")
+    else:
+        bot.send_message(message.chat.id, "❌ You don’t have a username set.")
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n🛑 Bot stopped.")
+@bot.message_handler(func=lambda message: True)
+def relay_messages(message):
+    user_id = message.chat.id
+    if user_id in active_chats:
+        partner_id = active_chats[user_id]
+        bot.send_message(partner_id, message.text)
+    else:
+        bot.send_message(user_id, "💬 Use /next to find a partner.")
+
+bot.polling()
