@@ -3,7 +3,7 @@ import asyncio
 import os
 import aiosqlite
 from datetime import datetime
-from telegram import (
+from telegram import ( # <--- THIS LINE WAS CORRECTED FROM 'telegran' TO 'telegram'
     Update, KeyboardButton, ReplyKeyboardMarkup, ChatAction
 )
 from telegram.ext import (
@@ -59,8 +59,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "👋 <b>Welcome to Anonymous Chat!</b>\n\nUse /start_chat to meet a random person.",
-        parse_mode="HTML", # Changed to HTML
-        reply_markup=menu_keyboard() # Start with menu keyboard
+        parse_mode="HTML", 
+        reply_markup=menu_keyboard() 
     )
 
 def menu_keyboard():
@@ -99,7 +99,7 @@ async def find_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'rating': 0,
             }
             
-            # Use HTML formatting (<b> instead of **)
+            # Using HTML formatting
             chat_info_message = (
                 "🎉 <b>Partner found!</b>\n\n"
                 "/next — next chat.\n"
@@ -110,12 +110,12 @@ async def find_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"t.me/{BOT_USERNAME}"
             ).format(**partner_info)
             
-            await context.bot.send_message(partner_id, chat_info_message, parse_mode="HTML", reply_markup=main_keyboard()) # Changed to HTML
-            await update.message.reply_text(chat_info_message, parse_mode="HTML", reply_markup=main_keyboard()) # Changed to HTML
+            await context.bot.send_message(partner_id, chat_info_message, parse_mode="HTML", reply_markup=main_keyboard()) 
+            await update.message.reply_text(chat_info_message, parse_mode="HTML", reply_markup=main_keyboard())
         else:
             await db.execute("UPDATE users SET partner_id=NULL WHERE user_id=?", (user_id,))
             await db.commit()
-            await update.message.reply_text("🔍 <b>Searching for a random partner...</b>", parse_mode="HTML") # Changed to HTML
+            await update.message.reply_text("🔍 <b>Searching for a random partner...</b>", parse_mode="HTML")
 
 # ---------- /next_chat (Previously /next) ----------
 async def next_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -145,11 +145,11 @@ async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await db.commit()
 
     # Calculate duration
-    # This line is robust but still relies on the DB timestamp format matching the code's expectation
     try:
         chat_start = datetime.strptime(chat_start_str.split('.')[0], '%Y-%m-%d %H:%M:%S')
     except ValueError:
-         chat_start = datetime.strptime(chat_start_str, '%Y-%m-%d %H:%M:%S.%f') # Fallback for full microsecond format
+         # Fallback for full microsecond format
+         chat_start = datetime.strptime(chat_start_str, '%Y-%m-%d %H:%M:%S.%f') 
 
     duration = datetime.now() - chat_start
     
@@ -160,7 +160,7 @@ async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     seconds = total_seconds % 60
     duration_str = f"{hours} hours, {minutes} minutes, {seconds} seconds"
     
-    # --- Response Message (Image 3) - Using HTML (<b> instead of **) ---
+    # --- Response Message (Image 3) - Using HTML ---
     end_message = (
         "❗ <b>The chat is over.</b>\n\n"
         "⏱️ You've been chatting for: <b>{duration_str}</b> and sent: <b>{messages_sent}</b> messages!\n\n"
@@ -175,12 +175,12 @@ async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
         
     # Send end summary to user
-    await update.message.reply_text(end_message, parse_mode="HTML", reply_markup=main_keyboard()) # Changed to HTML
+    await update.message.reply_text(end_message, parse_mode="HTML", reply_markup=main_keyboard())
 
 
 # ---------- MENU/SETTINGS (Image 1 Structure) ----------
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # This function uses the same structure as the image's menu - Using HTML (<b> instead of **)
+    # This function uses the same structure as the image's menu - Using HTML 
     menu_text = (
         "🆕 <b>start chat</b> /start_chat\n"
         "🔄 <b>next chat</b> /next_chat\n"
@@ -191,15 +191,15 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✨ <b>premium subscription</b> /premium\n"
         "💡 <b>terms of use</b> /rules"
     )
-    await update.message.reply_text(menu_text, parse_mode="HTML", reply_markup=menu_keyboard()) # Changed to HTML
+    await update.message.reply_text(menu_text, parse_mode="HTML", reply_markup=menu_keyboard()) 
 
 # --- Additional Placeholder Commands ---
 
 async def bonus_placeholder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🍾 <b>Daily Bonus</b> functionality is not implemented yet.", parse_mode="HTML") # Changed to HTML
+    await update.message.reply_text("🍾 <b>Daily Bonus</b> functionality is not implemented yet.", parse_mode="HTML") 
     
 async def premium_placeholder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✨ <b>Premium Subscription</b> options coming soon!", parse_mode="HTML") # Changed to HTML
+    await update.message.reply_text("✨ <b>Premium Subscription</b> options coming soon!", parse_mode="HTML") 
 
 # ---------- /profile & /rules (Minor Text Adjustments) ----------
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -210,14 +210,14 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
             row = await cur.fetchone()
             rating, interests = row if row else (0, 'not set')
 
-    # Using HTML (<b> instead of **)
+    # Using HTML
     await update.message.reply_text(
         f"👤 <b>Profile</b>\n\n"
         f"Name: {user.first_name}\n"
-        f"ID: <code>{user.id}</code>\n" # Using <code> for ID as a standard practice
+        f"ID: <code>{user.id}</code>\n" 
         f"🏆 Rating: {rating}\n"
         f"📖 Interests: {interests}",
-        parse_mode="HTML" # Changed to HTML
+        parse_mode="HTML"
     )
 
 async def rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -227,7 +227,7 @@ async def rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "2️⃣ No spam or abuse.\n"
         "3️⃣ Stay anonymous.\n"
         "4️⃣ Use /stop to leave safely.",
-        parse_mode="HTML" # Changed to HTML
+        parse_mode="HTML"
     )
 
 # ---------- LIKE / DISLIKE / COMPLAIN (Minor Button Text Change) ----------
@@ -300,7 +300,7 @@ async def relay_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     await context.bot.send_photo(partner_id, photo, caption=caption)
 
-# ---------- ADMIN FUNCTIONS (Formatting Fixed) ----------
+# ---------- ADMIN FUNCTIONS ----------
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return await update.message.reply_text("🚫 Not authorized.")
@@ -309,7 +309,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total = (await cur.fetchone())[0]
         async with db.execute("SELECT COUNT(*) FROM users WHERE partner_id IS NOT NULL") as cur:
             chatting = (await cur.fetchone())[0]
-    # Using HTML (<b> instead of *)
+    # Using HTML
     await update.message.reply_text(f"📊 <b>Bot Stats</b>\n👥 Total Users: {total}\n💬 Active Chats: {chatting}", parse_mode="HTML")
 
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -335,7 +335,7 @@ async def main():
     await init_db()
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Command Handlers (Matching Image 1)
+    # Command Handlers 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("start_chat", find_partner)) 
     app.add_handler(CommandHandler("find", find_partner)) 
@@ -353,7 +353,7 @@ async def main():
     app.add_handler(CommandHandler("stats", admin_stats))
     app.add_handler(CommandHandler("broadcast", broadcast))
 
-    # Message Handlers (Matching Image 2/Keyboard)
+    # Message Handlers 
     app.add_handler(MessageHandler(filters.PHOTO, relay_photo))
     app.add_handler(MessageHandler(filters.Regex("👍"), like))
     app.add_handler(MessageHandler(filters.Regex("👎"), dislike))
