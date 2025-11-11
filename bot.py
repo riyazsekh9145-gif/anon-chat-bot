@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 # ---------- CONFIG ----------
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "7479192169:AAHXQbfhgFY3GHZFQbH87ZOo4gPxD7upi_o"
 # NOTE: Replace 'EnAnonBot' with your actual bot's username or URL part
 BOT_USERNAME = "EnAnonBot" 
 ADMIN_ID = 8238022212 
