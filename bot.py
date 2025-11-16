@@ -47,32 +47,21 @@ def inline_find_partner_buttons():
 
 def inline_premium_plans():
     text = (
-        "💎 Premium Features
+        """💎 Premium Features
 
-"
-        "🔍 Search by gender (M/F)
-"
-        "🦋 Exchange private photos and videos
-"
-        "🌸 Send photos, videos, GIFs, stickers
-"
-        "🤡 Partner's info (Gender, Age)
-"
-        "🚫 No ads
+🔍 Search by gender (M/F)
+🦋 Exchange private photos and videos
+🌸 Send photos, videos, GIFs, stickers
+🤡 Partner's info (Gender, Age)
+🚫 No ads
 
-"
-        "⭐️ The longer the premium, the better the price
+⭐️ The longer the premium, the better the price
 
-"
-        "Plans:
-"
-        "149 tg star/week
-"
-        "349 tg star/month
-"
-        "400 tg star/3 months
-"
-        "999 tg star/year"
+Plans:
+149 tg star/week
+349 tg star/month
+400 tg star/3 months
+999 tg star/year"""
     )
     return text
 
